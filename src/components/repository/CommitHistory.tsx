@@ -1,4 +1,4 @@
-import { FileText, Plus, Minus, GitBranch, GitMerge, Tag } from "lucide-react";
+import { FileText, Plus, Minus, GitMerge, Tag } from "lucide-react";
 
 import { useState, useMemo } from "react";
 
@@ -310,22 +310,18 @@ export const CommitHistory = ({ repository }: CommitHistoryProps) => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">Commit History</h2>
           <p className="text-sm text-muted-foreground mt-1">
             {commits.length} commits on {defaultBranch}
           </p>
         </div>
-        <button className="glass px-4 py-2 rounded-lg hover:bg-white/10 transition-all duration-300 flex items-center gap-2">
-          <GitBranch className="h-4 w-4" />
-          All branches
-        </button>
       </div>
 
       {/* Graph Timeline */}
-      <div className="relative">
-        <div className="space-y-0">
+      <div className="relative overflow-x-auto">
+        <div className="space-y-0 min-w-max">
           {graphNodes.map((node, index) => {
             const { commit, column, color, routes } = node;
             const isExpanded = expandedCommit === commit.hash;
@@ -347,7 +343,10 @@ export const CommitHistory = ({ repository }: CommitHistoryProps) => {
             const svgWidth = (maxColumn + 2) * 16 + 20;
 
             return (
-              <div key={commit.hash} className="relative flex items-stretch">
+              <div
+                key={commit.hash}
+                className="relative flex items-stretch min-w-max"
+              >
                 {/* Graph visualization */}
                 <div
                   className="relative flex-shrink-0"
