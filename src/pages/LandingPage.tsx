@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   GitBranch,
@@ -29,6 +29,7 @@ export default function LandingPage() {
   const [repoUrl, setRepoUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [scoreAnimate, setScoreAnimate] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const mentorMessages = useMemo(
     () => [
@@ -47,6 +48,31 @@ export default function LandingPage() {
     [],
   );
 
+  useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const active = document.activeElement;
+
+    const isTyping =
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement;
+
+    if (e.key === "/" && !isTyping) {
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+
+    if (e.key === "Escape") {
+      setRepoUrl("");
+      searchRef.current?.blur();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    window.removeEventListener("keydown", handleKeyDown);
+  };
+}, []);
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     if (media?.matches) {
@@ -374,6 +400,7 @@ export default function LandingPage() {
               >
                 <div className="cta-shell__inner flex flex-col sm:flex-row gap-3 p-2 rounded-xl glass">
                   <Input
+                    ref={searchRef}
                     type="url"
                     placeholder="https://github.com/username/repository"
                     value={repoUrl}

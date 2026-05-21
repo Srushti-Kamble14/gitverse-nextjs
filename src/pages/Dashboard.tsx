@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   GitBranch,
@@ -51,10 +51,35 @@ export default function Dashboard() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchRepositories();
-  }, []);
+  fetchRepositories();
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const active = document.activeElement;
+
+    const isTyping =
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement;
+
+    if (e.key === "/" && !isTyping) {
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+
+    if (e.key === "Escape") {
+      setRepoUrl("");
+      searchRef.current?.blur();
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    window.removeEventListener("keydown", handleKeyDown);
+  };
+}, []);
 
   const fetchRepositories = async () => {
     try {
@@ -213,6 +238,7 @@ export default function Dashboard() {
               <Input
                 type="url"
                 placeholder="https://github.com/username/repository"
+                ref={searchRef}
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 className="flex-1 bg-background/50"
@@ -226,6 +252,9 @@ export default function Dashboard() {
                 <Plus className="h-4 w-4 mr-2" />
                 {analyzing ? "Analyzing..." : "Analyze Repository"}
               </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+              Press "/" to focus search • Esc to clear
+              </p>
             </div>
           </CardContent>
         </Card>
