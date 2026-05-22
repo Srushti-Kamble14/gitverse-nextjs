@@ -14,26 +14,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  console.log('Starting analysis cron run...');
+  const url = new URL(request.url);
+  const budgetParam = url.searchParams.get('timeBudgetMs');
+  const timeBudgetMs = budgetParam ? parseInt(budgetParam, 10) : 240_000;
+
+  if (Number.isNaN(timeBudgetMs) || timeBudgetMs < 10_000) {
+    return NextResponse.json(
+      { error: 'timeBudgetMs must be at least 10000ms' },
+      { status: 400 },
+    );
+  }
+
+  console.log(`Starting analysis cron run (budget: ${timeBudgetMs}ms)...`);
 
   try {
-    // Run the worker loop in "once" mode so it returns after one pass through the queue
-    const metrics = await startAnalysisWorkerLoop({ 
-      once: true
+    const metrics = await startAnalysisWorkerLoop({
+      timeBudgetMs,
     });
-    
+
     console.log(`Finished analysis cron run. Summary:`, metrics);
-    
-    return NextResponse.json({ 
-      success: metrics.success, 
+
+    return NextResponse.json({
+      success: metrics.success,
       message: 'Analysis worker execution completed',
-      metrics
+      metrics,
     });
   } catch (error: any) {
     console.error('run-analysis cron error:', error instanceof Error ? error.message : "Unknown error");
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
-      success: false
+      success: false,
     }, { status: 500 });
   }
 }

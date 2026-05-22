@@ -136,6 +136,7 @@ export interface AnalysisWorkerSummary {
   jobsSkipped: number;
   jobsFailed: number;
   executionDurationMs: number;
+  budgetUsedMs?: number;
   success: boolean;
 }
 
@@ -145,6 +146,7 @@ export async function startAnalysisWorkerLoop(opts?: {
   heartbeatIntervalMs?: number;
   lockMs?: number;
   once?: boolean;
+  timeBudgetMs?: number;
 }): Promise<AnalysisWorkerSummary> {
   const workerId = opts?.workerId || getWorkerId();
   const pollIntervalMs = opts?.pollIntervalMs ?? POLL_INTERVAL_MS;
@@ -156,6 +158,7 @@ export async function startAnalysisWorkerLoop(opts?: {
 
   let stopping = false;
   const startTimeMs = Date.now();
+  const deadline = opts?.timeBudgetMs ? Date.now() + opts.timeBudgetMs : Infinity;
   let totalJobsScanned = 0;
   let jobsProcessed = 0;
   let jobsSkipped = 0;
@@ -176,7 +179,7 @@ export async function startAnalysisWorkerLoop(opts?: {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
 
-  while (!stopping) {
+  while (!stopping && Date.now() < deadline) {
     try {
       const job = await analysisJobService.claimNextJob({
         workerId,
@@ -185,7 +188,7 @@ export async function startAnalysisWorkerLoop(opts?: {
 
       if (!job) {
         jobsSkipped++;
-        if (opts?.once) break;
+        if (opts?.once || opts?.timeBudgetMs) break;
         await sleep(pollIntervalMs);
         continue;
       }
@@ -205,13 +208,16 @@ export async function startAnalysisWorkerLoop(opts?: {
       if (opts?.once) break;
     } catch (e) {
       console.error("worker loop error:", sanitizeErrorMessage(e));
-      if (opts?.once) {
+      if (opts?.once || opts?.timeBudgetMs) {
         return {
           totalJobsScanned,
           jobsProcessed,
           jobsSkipped,
           jobsFailed,
           executionDurationMs: Date.now() - startTimeMs,
+          budgetUsedMs: opts?.timeBudgetMs
+            ? Date.now() - startTimeMs
+            : undefined,
           success: false,
         };
       }
@@ -225,6 +231,9 @@ export async function startAnalysisWorkerLoop(opts?: {
     jobsSkipped,
     jobsFailed,
     executionDurationMs: Date.now() - startTimeMs,
+    budgetUsedMs: opts?.timeBudgetMs
+      ? Date.now() - startTimeMs
+      : undefined,
     success: true,
   };
 }
@@ -236,7 +245,12 @@ const isMain =
   typeof require !== "undefined" && (require as any).main === module;
 if (isMain) {
   const once = !!process.env.WORKER_ONCE;
-  startAnalysisWorkerLoop({ once }).catch((e) => {
+  const budgetEnv = process.env.WORKER_TIME_BUDGET_MS;
+  const timeBudgetMs = budgetEnv ? parseInt(budgetEnv, 10) : undefined;
+  startAnalysisWorkerLoop({
+    ...(once ? { once } : {}),
+    ...(timeBudgetMs && !Number.isNaN(timeBudgetMs) ? { timeBudgetMs } : {}),
+  }).catch((e) => {
     console.error("worker fatal:", e);
     process.exit(1);
   });
