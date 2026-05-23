@@ -334,7 +334,7 @@ export function BranchVisualization({ repository }: BranchVisualizationProps) {
                     message: rawCommit.message || "",
                     author: rawCommit.authorName || "Unknown",
                     authorName: rawCommit.authorName || "Unknown",
-                    timestamp: toSafeIso(rawCommit.committedAt),
+                    timestamp: toSafeIso(rawCommit.committedAt ?? rawCommit.createdAt),
                     branch: rawCommit.branch || "main",
                     parents: rawCommit.parents || [],
                     isMerge: rawCommit.isMerge || false,
