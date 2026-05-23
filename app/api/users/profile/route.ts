@@ -50,7 +50,7 @@ export async function PUT(request: NextRequest) {
       if (!newPassword || typeof newPassword !== "string") {
         return NextResponse.json(
           {
-            message:
+            error:
               "Changing email will unlink your Google account. Please provide newPassword to set a new password.",
           },
           { status: 400 }
@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest) {
 
       if (newPassword.length < 8) {
         return NextResponse.json(
-          { message: "Password must be at least 8 characters" },
+          { error: "Password must be at least 8 characters" },
           { status: 400 }
         );
       }
